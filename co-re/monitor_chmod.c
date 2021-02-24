@@ -6,6 +6,7 @@
 #include "monitor_chmod.skel.h"
 #include "trace_helpers.h"
 
+
 int libbpf_print_fn(enum libbpf_print_level level,
         const char *format, va_list args)
 {   
@@ -15,6 +16,8 @@ int libbpf_print_fn(enum libbpf_print_level level,
     return vfprintf(stderr, format, args);
 }
 
+
+/* Function to be invoked at sys_fchmodat triggered */
 void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)
 {
 	const struct data_t *info = data;
@@ -55,7 +58,7 @@ int main(void) {
 		goto cleanup;
 	}
 
-    printf("%-8s %-16s %-64s %-4s", "PID", "COMM", "PATH", "MODE");
+    printf("%-8s %-16s %-64s %-4s\n", "PID", "COMM", "PATH", "MODE");
 
 	pb_opts.sample_cb = handle_event;
 	pb = perf_buffer__new(bpf_map__fd(obj->maps.events), 1, &pb_opts);
