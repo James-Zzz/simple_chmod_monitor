@@ -1,4 +1,4 @@
-#include <vmlinux.h>
+`#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
@@ -11,23 +11,33 @@ struct {
 } events SEC(".maps");
 
 /*
- * Use following method to fetch syscall you want to probe:
+ * Use following method to fetch event you want to probe:
  *
  * #cat /proc/kallsyms | grep fchmodat
- * 0000000000000000 T __x64_sys_fchmodat
+ * 0000000000000000 t do_fchmodat
+ *
+ *
+ * Failed to monitor sys_enter_fchmodat:
+ * sudo ls /sys/kernel/debug/tracing/events/syscalls
+ * SEC("tracepoint/raw_syscalls/sys_enter_fchmodat")
+ * Got following error message:
+ * libbpf: prog 'sys_fchmodat': failed to attach to pfd 6: Permission denied
+ * libbpf: prog 'sys_fchmodat': failed to attach to tracepoint
+ *         'syscalls/sys_enter_fchmodat': Permission denied
+ * libbpf: failed to auto-attach program 'sys_fchmodat': -13
+ * failed to attach BPF programs
  */
-SEC("kprobe/__x64_sys_fchmodat")
+SEC("kprobe/do_fchmodat")
 int sys_fchmodat(struct pt_regs *ctx) {
-    struct pt_regs *__ctx = (void *)PT_REGS_PARM1(ctx);
-    const char *file_name = (void *)&PT_REGS_PARM2(__ctx);
-    umode_t *mode = (void *)&PT_REGS_PARM3(__ctx);
+    const char *file_name = (void *)&PT_REGS_PARM2(ctx);
+    umode_t mode = PT_REGS_PARM3(ctx);
     u32 pid = bpf_get_current_pid_tgid() >> 32;
     struct task_struct *current = (void *)bpf_get_current_task();
     struct data_t data = {};
     const char *argp;
 
     data.pid = pid;
-    bpf_core_read(&data.mode, sizeof(data.mode), mode);
+    data.mode = mode;
     BPF_CORE_READ_STR_INTO(&data.comm, current, group_leader, comm);
 
     bpf_core_read(&argp, sizeof(argp), file_name);
