@@ -6,6 +6,8 @@
 #include "monitor_chmod.skel.h"
 #include "trace_helpers.h"
 
+#define PERF_BUFFER_PAGES	16
+
 int libbpf_print_fn(enum libbpf_print_level level,
         const char *format, va_list args)
 {   
@@ -25,19 +27,18 @@ void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)
             info->path, info->mode);
 }
 
+void handle_lost_events(void *ctx, int cpu, __u64 lost_cnt)
+{
+	fprintf(stderr, "lost %llu events on CPU #%d\n", lost_cnt, cpu);
+}
+
 int main(void) {
-    struct perf_buffer_opts pb_opts;
     struct perf_buffer *pb = NULL;
     struct monitor_chmod_bpf *obj;
     int err;
 
+	libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
     libbpf_set_print(libbpf_print_fn);
-
-    err = bump_memlock_rlimit();
-    if (err) {
-        fprintf(stderr, "failed to increase rlimit: %d\n", err);
-        return 1;
-    }
 
     obj = monitor_chmod_bpf__open();
     if (!obj) {
@@ -59,8 +60,8 @@ int main(void) {
 
     printf("%-8s %-16s %-64s %-4s\n", "PID", "COMM", "PATH", "MODE");
 
-    pb_opts.sample_cb = handle_event;
-    pb = perf_buffer__new(bpf_map__fd(obj->maps.events), 1, &pb_opts);
+	pb = perf_buffer__new(bpf_map__fd(obj->maps.events), PERF_BUFFER_PAGES,
+			      handle_event, handle_lost_events, NULL, NULL);
 
     err = libbpf_get_error(pb);
     if (err) {
