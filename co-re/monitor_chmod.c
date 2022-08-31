@@ -37,7 +37,7 @@ int main(void) {
     struct monitor_chmod_bpf *obj;
     int err;
 
-	libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
+    libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
     libbpf_set_print(libbpf_print_fn);
 
     obj = monitor_chmod_bpf__open();
@@ -60,8 +60,8 @@ int main(void) {
 
     printf("%-8s %-16s %-64s %-4s\n", "PID", "COMM", "PATH", "MODE");
 
-	pb = perf_buffer__new(bpf_map__fd(obj->maps.events), PERF_BUFFER_PAGES,
-			      handle_event, handle_lost_events, NULL, NULL);
+    pb = perf_buffer__new(bpf_map__fd(obj->maps.events), PERF_BUFFER_PAGES,
+			  handle_event, handle_lost_events, NULL, NULL);
 
     err = libbpf_get_error(pb);
     if (err) {
